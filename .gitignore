@@ -1,0 +1,25 @@
+# General
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+
+# Environment Variables
+.env
+
+# ANTC Data & Resources
+resources/
+temp_video_downloads/
+antc_dev.db
+*.sqlite3
+
+# Temporary Debug Scripts & Tests
+debug_*.py
+test_youtube.py
