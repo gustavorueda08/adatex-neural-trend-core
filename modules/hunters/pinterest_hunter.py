@@ -9,6 +9,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 from modules.integration.storage import get_storage_provider
 
 class PinterestHunter:
@@ -23,10 +25,16 @@ class PinterestHunter:
         
     def hunt(self, query: str, limit: int = 10):
         print(f"🕵️‍♀️ [PinterestHunter] Starting hunt for: '{query}'")
-        driver = webdriver.Chrome(options=self.options)
+        try:
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=self.options)
+        except Exception as e:
+            print(f"⚠️ [PinterestHunter] Failed to init driver with manager, trying default: {e}")
+            driver = webdriver.Chrome(options=self.options)
         
         results = []
         unique_urls = set()
+        visited_raw_urls = set()
 
         try:
             # 1. Navigation
@@ -48,33 +56,56 @@ class PinterestHunter:
                     if len(results) >= limit:
                         break
                         
-                    src = img.get_attribute("src")
-                    if not src or src in unique_urls:
+                    raw_src = img.get_attribute("src")
+                    if not raw_src or raw_src in visited_raw_urls:
+                        continue
+                    visited_raw_urls.add(raw_src)
+
+                    if "/75x75/" in raw_src or "/60x60/" in raw_src: # Skip tiny avatars
                         continue
 
-                    # Filter: High resolution only (originals or 564x, exclude 236x thumbnails)
-                    if "/236x/" in src or "/75x75/" in src:
-                        continue
+                    # Generate candidates for best resolution
+                    candidates = []
+                    if "/236x/" in raw_src:
+                        # Priority: Originals -> 564x -> 236x (fallback)
+                        candidates.append(raw_src.replace("/236x/", "/originals/"))
+                        candidates.append(raw_src.replace("/236x/", "/564x/"))
+                        candidates.append(raw_src) 
+                    else:
+                        candidates.append(raw_src)
+
+                    # Try downloading candidates
+                    image_data = None
+                    successful_url = None
+
+                    for url in candidates:
+                        if url in unique_urls: 
+                            continue # Already captured this exact URL
+                        
+                        try:
+                            # print(f"🔍 [PinterestHunter] Trying: {url}") # Verbose debugging
+                            image_data = self._download_image(url)
+                            successful_url = url
+                            break # Success!
+                        except Exception:
+                            # print(f"⚠️ [PinterestHunter] Failed: {url}")
+                            continue
                     
-                    # Try to upgrade resolution if possible
-                    # Pinterest often has /236x/ which can be replaced by /564x/ or /originals/
-                    # For now just accepting 564x+ or originals
-                    if "/564x/" not in src and "/originals/" not in src:
+                    if not image_data or not successful_url:
                         continue
 
-                    unique_urls.add(src)
+                    unique_urls.add(successful_url)
                     
                     # 4. Persistence
                     try:
-                        print(f"📥 [PinterestHunter] Downloading: {src}")
-                        image_data = self._download_image(src)
+                        print(f"📥 [PinterestHunter] Downloading: {successful_url}")
                         
                         file_name = f"pinterest_{uuid.uuid4().hex[:8]}.jpg"
                         stored_url = self.storage.upload_file(image_data, file_name)
                         
                         result = {
                             "s3_url": stored_url,
-                            "source_url": src, # Ideally we get the Pin URL, but image src is ok for now
+                            "source_url": successful_url,
                             "query": query,
                             "timestamp": datetime.now().isoformat()
                         }
@@ -82,7 +113,7 @@ class PinterestHunter:
                         print(f"✅ [PinterestHunter] Saved: {stored_url}")
                         
                     except Exception as e:
-                        print(f"⚠️ [PinterestHunter] Failed to download {src}: {e}")
+                        print(f"⚠️ [PinterestHunter] Failed to save {successful_url}: {e}")
                         continue
                 
                 scrolls += 1

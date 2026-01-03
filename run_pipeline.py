@@ -68,7 +68,7 @@ def main():
     
     # 1.4 Web (Context - text)
     web = WebReader()
-    web_assets = web.read("https://www.vogue.co.uk/fashion/article/spring-summer-2025-fashion-trends", limit=1)
+    web_assets = web.read("https://www.vogue.co.uk/fashion/article/spring-summer-2025-fashion-trends", limit=5)
     
     text_assets = yt_assets + web_assets
     print(f"   📄 Total Text Assets: {len(text_assets)}")

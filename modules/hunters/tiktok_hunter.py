@@ -15,49 +15,69 @@ class TikTokHunter:
     def hunt(self, tag: str, limit: int = 5):
         print(f"🎵 [TikTokHunter] Starting hunt for tag: '{tag}'")
         
-        # 1. Search and Download via yt-dlp
-        # Note: TikTok search via yt-dlp can be unstable. 
-        # Using "ytsearch" (YouTube) as a proxy for "Reels/Shorts" in this POC if TikTok fails, 
-        # but the blueprint asks for TikTok. I will try a generic search that yt-dlp supports.
-        # Ideally, we would use a specific TikTok scraper, but yt-dlp supports tiktok.com URLs.
-        # For 'search', yt-dlp works best with YouTube. 
-        # To strictly follow the blueprint "TikTok/Reels Hunter", I will assume we might search generic short video platforms 
-        # or rely on direct URLs if search is blocked. 
-        # However, yt-dlp DOES support "ytsearch:". Let's try to find Shorts/Reels style content on YouTube 
-        # if TikTok search is flaky, OR we can try to download specific TikTok URLs if provided.
-        # For this implementation, I will implement a search on YouTube Shorts as it's more reliable for automation 
-        # than scraping TikTok search results without a dedicated API.
-        
-        # UPDATE: The prompt implies "TikTok/Reels". 
         results = []
         
         ydl_opts = {
-            # 'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best', # Requires FFmpeg
-            'format': 'best[ext=mp4]', # Single file
+            'format': 'best[ext=mp4]',
             'outtmpl': os.path.join(self.temp_dir, '%(id)s.%(ext)s'),
             'noplaylist': True,
             'quiet': True,
-            # 'max_downloads': limit # Removed to avoid exception
+            'concurrent_fragment_downloads': 1, # Prevent race conditions
         }
 
-        # We will use "ytsearch" with "shorts" keyword to simulate finding vertical viral videos if direct TikTok search is hard.
-        # But let's try to be generic. 
-        search_query = f"ytsearch{limit}:{tag} #shorts"
+        # Use "ytsearch" with "shorts" keyword and fetch more results to filter
+        search_query = f"ytsearch{limit*3}:{tag} #shorts" 
 
-        print(f"⬇️ [TikTokHunter] Downloading up to {limit} videos matching '{tag}'...")
+        print(f"⬇️ [TikTokHunter] Searching for up to {limit} short videos matching '{tag}'...")
         
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(search_query, download=True)
+                # 1. Extract Info WITHOUT Downloading first
+                info = ydl.extract_info(search_query, download=False)
+                
                 if 'entries' in info:
-                    video_entries = info['entries']
+                    all_entries = info['entries']
                 else:
-                    video_entries = [info]
+                    all_entries = [info]
 
-                # Manually limit
-                for entry in video_entries[:limit]:
+                # 2. Filter by Duration (Simulate TikTok/Reels < 120s)
+                filtered_entries = []
+                for entry in all_entries:
                     if not entry: continue
+                    duration = entry.get('duration', 0)
+                    if 0 < duration < 120: # Less than 2 minutes
+                        filtered_entries.append(entry)
+                
+                print(f"   ℹ️ Found {len(filtered_entries)} valid short videos (duration < 120s).")
+
+                # 3. Download Filtered Entries
+                for entry in filtered_entries[:limit]:
                     video_id = entry.get('id')
+                    video_url = entry.get('webpage_url') or entry.get('url')
+                    
+                    print(f"   ⬇️ Downloading video {video_id} ({entry.get('duration')}s)...")
+                    
+                    try:
+                        # Download specific video
+                        ydl.download([video_url or video_id])
+                        
+                        # Find the file
+                        candidates = glob.glob(os.path.join(self.temp_dir, f"{video_id}.*"))
+                        if candidates:
+                            video_path = candidates[0]
+                            # 4. Process
+                            frames = self._process_video(video_path, parent_id=video_id, tag=tag)
+                            results.extend(frames)
+                            
+                            # Cleanup
+                            if os.path.exists(video_path):
+                                os.remove(video_path)
+                        else:
+                             print(f"   ⚠️ File not found for {video_id} after download.")
+
+                    except Exception as e:
+                        print(f"   ❌ Failed to download/process {video_id}: {e}")
+                        continue
                     
                     # Try to find any file with that ID
                     candidates = glob.glob(os.path.join(self.temp_dir, f"{video_id}.*"))

@@ -60,8 +60,20 @@ class NLPEngine:
 
         try:
             # 1. Summarize
-            summary_output = self.summarizer(processed_text, max_length=130, min_length=30, do_sample=False)
-            summary_text = summary_output[0]['summary_text']
+            if len(processed_text) > 100:
+                # Dynamic max_length to avoid errors with short inputs
+                max_len = min(130, len(processed_text) // 2) 
+                if max_len < 30: max_len = 30
+                
+                try:
+                    summary_output = self.summarizer(processed_text, max_length=max_len, min_length=10, do_sample=False)
+                    summary_text = summary_output[0]['summary_text']
+                except Exception as e:
+                     print(f"      ⚠️ Summarization skipped: {e}")
+                     summary_text = processed_text
+            else:
+                 summary_text = processed_text
+
             metrics['summary'] = summary_text
 
             # 2. Sentiment
