@@ -51,15 +51,14 @@ def main():
     # --- 1. THE HUNTERS (Ingesta Omnicanal) ---
     print("\n🏹 [ANTC] Phase 1: Hunters (Omnichannel)")
     
-    # 1.1 Pinterest (Visual - Static)
+    # 1. Gather Data
     pinterest = PinterestHunter()
-    pin_assets = pinterest.hunt("Fashion Trends 2026", limit=5)
+    short_video = ShortVideoHunter()
     
-    # 1.2 TikTok (Visual - Dynamic)
-    tiktok = TikTokHunter()
-    tt_assets = tiktok.hunt("FashionTrends2026", limit=5) 
+    p_results = pinterest.hunt("Summer 2025 Fashion Trends", limit=10)
+    sv_results = short_video.hunt("Summer Fashion Trends 2025", limit=5) 
     
-    visual_assets = pin_assets + tt_assets
+    visual_assets = p_results + sv_results
     print(f"   📸 Total Visual Assets: {len(visual_assets)}")
 
     # 1.3 YouTube (Context - Audio/Text)

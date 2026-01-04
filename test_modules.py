@@ -9,7 +9,7 @@ def print_menu():
     print("\n🧪 [ANTC] Module Testing Tool")
     print("=============================")
     print("1. Test Pinterest Hunter (modules/hunters/pinterest_hunter.py)")
-    print("2. Test TikTok Hunter (modules/hunters/tiktok_hunter.py)")
+    print("2. Test Short Video Hunter (modules/hunters/short_video_hunter.py)")
     print("3. Test YouTube Listener (modules/hunters/youtube_listener.py)")
     print("4. Test Web Reader (modules/hunters/web_reader.py)")
     print("5. Test Vision Engine (modules/brains/vision_engine.py)")
@@ -27,17 +27,17 @@ def run_test(module_name, query=None):
         if module_name == "PinterestHunter":
             from modules.hunters.pinterest_hunter import PinterestHunter
             hunter = PinterestHunter()
-            hunter.hunt(query or "Summer Fashion 2026", limit=10)
+            hunter.hunt(query or "Moda Colombia 2026", limit=30)
 
-        elif module_name == "TikTokHunter":
-            from modules.hunters.tiktok_hunter import TikTokHunter
-            hunter = TikTokHunter()
-            hunter.hunt(query or "Summer Fashion 2026", limit=1)
+        elif module_name == "ShortVideoHunter":
+            from modules.hunters.short_video_hunter import ShortVideoHunter
+            hunter = ShortVideoHunter()
+            hunter.hunt(query or "Moda Colombia 2026", limit=5)
 
         elif module_name == "YouTubeListener":
             from modules.hunters.youtube_listener import YouTubeListener
             listener = YouTubeListener()
-            listener.listen(query or "Fashion Trends 2026", limit=1)
+            listener.listen(query or "Fashion Trends 2026", limit=30 )
 
         elif module_name == "WebReader":
             from modules.hunters.web_reader import WebReader
@@ -104,7 +104,7 @@ def main():
         if choice == "0":
             break
         elif choice == "1": run_test("PinterestHunter")
-        elif choice == "2": run_test("TikTokHunter")
+        elif choice == "2": run_test("ShortVideoHunter")
         elif choice == "3": run_test("YouTubeListener")
         elif choice == "4": run_test("WebReader")
         elif choice == "5": run_test("VisionEngine")

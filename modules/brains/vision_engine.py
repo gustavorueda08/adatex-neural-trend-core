@@ -30,31 +30,20 @@ class VisionEngine:
         else:
             return Image.open(image_path).convert("RGB")
 
-    def analyze(self, image_path: str, candidate_data: dict) -> dict:
+    def analyze(self, image_input, candidate_data: dict) -> dict:
         """
         Performs Multi-Attribute Zero-Shot Classification.
         
         Args:
-            image_path: Path/URL to image.
+            image_input: Path/URL (str) or PIL Image object.
             candidate_data: Dictionary of categories and labels.
-                            Example:
-                            {
-                                "fabric": ["Sherpa", "Velvet", "Lino"],
-                                "texture": ["Smooth", "Rough", "Fluffy"],
-                                "finish": ["Matte", "Shiny"]
-                            }
-        
-        Returns:
-            dict: Structured results with top match and confidence for each category.
-                  Example:
-                  {
-                      "fabric": {"label": "Sherpa", "score": 0.95, "all_scores": {...}},
-                      "texture": {"label": "Fluffy", "score": 0.88, ...},
-                      ...
-                  }
         """
         try:
-            image = self._load_image(image_path)
+            if isinstance(image_input, str):
+                image = self._load_image(image_input)
+            else:
+                image = image_input.convert("RGB")
+            
             results = {}
 
             # Process each category independently using the same model
